@@ -46,6 +46,7 @@ type GpgRes struct {
 
 // NewGpgRes is a constructor for this resource. It also calls Init() for you.
 func NewGpgRes(name string, email string) *GpgRes {
+	log.Println("PGP: init PGP")
 	obj := &GpgRes{
 		Name:    name,
 		Comment: "",
@@ -57,7 +58,7 @@ func NewGpgRes(name string, email string) *GpgRes {
 
 // Init runs some startup code for this resource.
 func (obj *GpgRes) Init() {
-	log.Println("TESTING GPG")
+	log.Println("TESTING PGP")
 
 	var err error
 	var config packet.Config
@@ -71,6 +72,7 @@ func (obj *GpgRes) Init() {
 	// obj.savePubKey()
 
 	obj.Admin = addAdminPubKey("/home/gzsierra/.gnupg/pubring.gpg")
+	// obj.Sign(*obj.Admin)
 }
 
 func WriteKeyRing() {
@@ -78,7 +80,7 @@ func WriteKeyRing() {
 }
 
 func (obj *GpgRes) SavePubKey() {
-	log.Println("Save Public key")
+	log.Println("PGP: Save Public key")
 
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
@@ -93,14 +95,12 @@ func (obj *GpgRes) SavePubKey() {
 
 func addAdminPubKey(path string) *openpgp.Entity {
 	// Read in public key
-	log.Println("Admin pub Key file: ", path)
+	log.Println("PGP: Admin pub Key file")
 	pubKeyFile, _ := os.Open(path)
 	defer pubKeyFile.Close()
 
-	log.Println("New reader", pubKeyFile.Name())
 	file := packet.NewReader(bufio.NewReader(pubKeyFile))
 
-	log.Println("Read Entity", file)
 	entity, err := openpgp.ReadEntity(file)
 	checkError(err)
 
@@ -114,7 +114,9 @@ func (obj *GpgRes) Sign(signer openpgp.Entity) {
 	var config packet.Config
 	config.DefaultHash = crypto.SHA256
 
-	obj.Entity.SignIdentity(obj.Name, &signer, &config)
+	log.Println("Sign Entity")
+	err := obj.Entity.SignIdentity(obj.Name, &signer, &config)
+	checkError(err)
 }
 
 // TODO Remove any save file for the current entity (ex : PubKey)
@@ -127,7 +129,7 @@ func (obj *GpgRes) Crypt(to *openpgp.Entity, msg string) string {
 	ents := []*openpgp.Entity{to}
 	// ents := obj.Entity.Subkeys
 
-	log.Println("Crypting the test file")
+	log.Println("PGP: Crypting the test file")
 
 	buf := new(bytes.Buffer)
 	w, err := openpgp.Encrypt(buf, ents, obj.Entity, nil, nil)
@@ -147,6 +149,25 @@ func (obj *GpgRes) Crypt(to *openpgp.Entity, msg string) string {
 	log.Println("Encrypted Secret:", encString)
 
 	return encString
+}
+
+func (obj *GpgRes) WriteToAdmin(msg string, prefix string) {
+	log.Println("PGP: Writing messages to Admin")
+	file := prefix + "/MessageForAdmin.gpg"
+
+	log.Println("Crypt")
+	encString := obj.Crypt(obj.Admin, msg)
+	err := ioutil.WriteFile(file, []byte(encString), 0644)
+	checkError(err)
+
+	log.Println("Create File")
+	// f, err := os.Create(file)
+	// checkError(err)
+	// defer f.Close()
+	// // d2 := []byte{encString}
+	// _, err = f.WriteString(encString)
+	// checkError(err)
+	// f.Sync()
 }
 
 // Decrypt a encrypted msg

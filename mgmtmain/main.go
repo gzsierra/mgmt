@@ -428,9 +428,8 @@ func (obj *Main) Run() error {
 
 	if obj.Gpg {
 		log.Println("Creating gpg Entity")
-		gpg1 := gpg.NewGpgRes("name1", "test@test.ing")
+		gpg1 := gpg.NewGpgRes("noop1", "test@test.ing")
 		gpg2 := gpg.NewGpgRes("name2", "test@test.ing")
-		// gpg1.SavePubKey()
 
 		// 1 send msg to 2
 		encMsg := gpg1.Crypt(gpg2.Entity, "noop")
@@ -438,6 +437,10 @@ func (obj *Main) Run() error {
 		// 2 receive encMsg and Decrypt
 		msg := gpg2.Decrypt(encMsg)
 		log.Println("Decrypted msg : ", msg)
+
+		// Testing WriteToAdmin
+		log.Println("Prefix", prefix)
+		gpg1.WriteToAdmin("noop", prefix)
 	}
 
 	// build remotes struct for remote ssh
