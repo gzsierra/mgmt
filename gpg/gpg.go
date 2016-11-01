@@ -25,6 +25,7 @@ import (
 	"encoding/gob"
 	"io/ioutil"
 	"log"
+	"os"
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/packet"
@@ -40,6 +41,7 @@ type GpgRes struct {
 	Comment string `yaml:"comment"` // extra field for example purposes
 	Email   string `yaml:"email"`
 	Entity  *openpgp.Entity
+	Admin   *openpgp.Entity
 }
 
 // NewGpgRes is a constructor for this resource. It also calls Init() for you.
@@ -67,6 +69,8 @@ func (obj *GpgRes) Init() {
 		return
 	}
 	// obj.savePubKey()
+
+	obj.Admin = addAdminPubKey("/home/gzsierra/.gnupg/pubring.gpg")
 }
 
 func WriteKeyRing() {
@@ -87,14 +91,30 @@ func (obj *GpgRes) SavePubKey() {
 
 }
 
+func addAdminPubKey(path string) *openpgp.Entity {
+	// Read in public key
+	log.Println("Admin pub Key file: ", path)
+	pubKeyFile, _ := os.Open(path)
+	defer pubKeyFile.Close()
+
+	log.Println("New reader", pubKeyFile.Name())
+	file := packet.NewReader(bufio.NewReader(pubKeyFile))
+
+	log.Println("Read Entity", file)
+	entity, err := openpgp.ReadEntity(file)
+	checkError(err)
+
+	log.Println(entity)
+	return entity
+}
+
 // TODO Get all present PubKey and add to SubKey
 // addSubKey
-func (obj *GpgRes) AddSubKey(pubKey packet.PublicKey) {
-	// sub := &obj.Entity.Subkeys
-	// var key openpgp.Key
-	var subKeys []openpgp.Subkey
-	// subKeys
-	obj.Entity.Subkeys = subKeys
+func (obj *GpgRes) Sign(signer openpgp.Entity) {
+	var config packet.Config
+	config.DefaultHash = crypto.SHA256
+
+	obj.Entity.SignIdentity(obj.Name, &signer, &config)
 }
 
 // TODO Remove any save file for the current entity (ex : PubKey)

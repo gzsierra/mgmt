@@ -75,7 +75,8 @@ type Main struct {
 	NoCaching        bool   // don't allow remote caching of remote execution binary
 	Depth            uint16 // depth in remote hierarchy; for internal use only
 
-	Gpg bool // allow to create a GPG entity
+	Gpg        bool          // allow to create a GPG entity
+	EntityList []*gpg.GpgRes // list of Entity
 
 	DEBUG   bool
 	VERBOSE bool
@@ -436,8 +437,6 @@ func (obj *Main) Run() error {
 
 		// 2 receive encMsg and Decrypt
 		msg := gpg2.Decrypt(encMsg)
-		// encMsg := gpg.Crypt("noop")
-		// msg := gpg.Decrypt(encMsg)
 		log.Println("Decrypted msg : ", msg)
 	}
 
