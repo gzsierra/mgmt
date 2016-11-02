@@ -428,19 +428,24 @@ func (obj *Main) Run() error {
 
 	if obj.Gpg {
 		log.Println("Creating gpg Entity")
-		gpg1 := gpg.NewGpgRes("noop1", "test@test.ing", "/home/gzsierra/.gnupg/pubring.gpg")
-		gpg2 := gpg.NewGpgRes("name2", "test@test.ing", "/home/gzsierra/.gnupg/pubring.gpg")
+		adminPubKey := "/home/gzsierra/.gnupg/pubring.gpg"
+		gpg1 := gpg.NewGpgRes("noop1", "test@test.ing", adminPubKey)
+		// gpg2 := gpg.NewGpgRes("name2", "test@test.ing", adminPubKey)
+
+		// gpg1.Sign(*gpg2.Entity)
 
 		// 1 send msg to 2
-		encMsg := gpg1.Crypt(gpg2.Entity, "noop")
+		// encMsg := gpg1.Crypt(gpg2.Entity, "noop")
 
 		// 2 receive encMsg and Decrypt
-		msg := gpg2.Decrypt(encMsg)
-		log.Println("Decrypted msg : ", msg)
+		// msg := gpg2.Decrypt(encMsg)
+		// log.Println("Decrypted msg : ", msg)
 
 		// Testing WriteToAdmin
-		log.Println("Prefix", prefix)
+		// log.Println("Prefix", prefix)
 		gpg1.WriteToAdmin("This is a message for the admin ! :) ", prefix)
+
+		gpg1.SavePubKey(prefix)
 	}
 
 	// build remotes struct for remote ssh

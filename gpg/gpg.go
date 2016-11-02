@@ -70,16 +70,28 @@ func (obj *GpgRes) Init(adminPublicPath string) {
 		return
 	}
 
+	// Self Sign for futur export
+	obj.SelfSign()
+
 	obj.Admin = addAdminPubKey(adminPublicPath)
-	// obj.Sign(*obj.Admin)
 }
 
-func WriteKeyRing() {
-
-}
-
-func (obj *GpgRes) SavePubKey() {
+// SavePubKey save the public key of an entity for later import
+func (obj *GpgRes) SavePubKey(prefix string) {
 	log.Println("PGP: Save Public key")
+
+	file := prefix + "/PubGPG1.gpg"
+
+	f, err := os.Create(file)
+	checkError(err)
+	w := bufio.NewWriter(f)
+
+	obj.Entity.Serialize(w)
+
+	// buf.WriteTo(w)
+	w.Flush()
+
+	log.Println("Create File")
 
 }
 
@@ -99,15 +111,43 @@ func addAdminPubKey(path string) *openpgp.Entity {
 	return entity
 }
 
-// TODO Get all present PubKey and add to SubKey
-// addSubKey
-func (obj *GpgRes) Sign(signer openpgp.Entity) {
+// SelfSign Allow Serialization and Export of public key
+// REF : https://github.com/alokmenghrajani/gpgeez/blob/master/gpgeez.go
+func (obj *GpgRes) SelfSign() {
 	var config packet.Config
 	config.DefaultHash = crypto.SHA256
 
 	log.Println("Sign Entity")
-	err := obj.Entity.SignIdentity(obj.Name, &signer, &config)
-	checkError(err)
+
+	key := obj.Entity
+	for _, id := range key.Identities {
+		id.SelfSignature.PreferredSymmetric = []uint8{
+			uint8(packet.CipherAES256),
+			uint8(packet.CipherAES192),
+			uint8(packet.CipherAES128),
+			uint8(packet.CipherCAST5),
+			uint8(packet.Cipher3DES),
+		}
+		id.SelfSignature.PreferredHash = []uint8{
+			uint8(crypto.SHA256),
+			uint8(crypto.SHA1),
+			uint8(crypto.SHA384),
+			uint8(crypto.SHA512),
+			uint8(crypto.SHA224),
+		}
+		id.SelfSignature.PreferredCompression = []uint8{
+			uint8(packet.CompressionZLIB),
+			uint8(packet.CompressionZIP),
+		}
+
+		id.SelfSignature.SignUserId(id.UserId.Id, key.PrimaryKey, key.PrivateKey, &config)
+	}
+
+	// Self-sign the Subkeys
+	for _, subkey := range key.Subkeys {
+		subkey.Sig.SignKey(subkey.PublicKey, key.PrivateKey, &config)
+	}
+
 }
 
 // Crypt encode the encrypted string from CryptingMsg
@@ -128,7 +168,6 @@ func (obj *GpgRes) Crypt(to *openpgp.Entity, msg string) string {
 // CryptingMsg encrypt the message.
 func (obj *GpgRes) CryptingMsg(to *openpgp.Entity, msg string) *bytes.Buffer {
 	ents := []*openpgp.Entity{to}
-	// ents := obj.Entity.Subkeys
 
 	log.Println("PGP: Crypting the test file")
 
